@@ -16,6 +16,100 @@ https://segmentfault.com/a/1190000016354758  基准测试
 brew install graphviz
 ```
 
+# go tool pprof参数分析
+
+- <font color=red size=5x>**-inuse_space           正在使用的内存**</font>
+- <font color=green size=5x>**-inuse_objects         正在使用的分配的的对象**</font>
+- <font color=red size=5x>** -alloc_space 从程序开始到现在总共分配的内存**</font>
+- <font color=green size=5x>** -alloc_objects 从程序开始到现在总共分配的对象**</font>
+-   <font color=red size=5x>**-total_delay **</font>
+- <font color=green size=5x>**-contentions **</font>
+- <font color=red size=5x>**-mean_delay **</font>
+
+## 1、当前占用内存inuse_space
+
+### 终端查看
+
+```
+go tool pprof   -inuse_space   http://1x.1xx.1x3.xx:4803/debug/pprof/heap
+```
+
+
+
+![image-20201223160501123](xnfx/image-20201223160501123.png)
+
+- <font color=green size=5x>**flat：给定函数上运行耗时**</font>
+- <font color=red size=5x>**flat%：同上的 CPU 运行耗时总比例**</font>
+- <font color=green size=5x>**sum%：给定函数累积使用 CPU 总比例**</font>
+- <font color=red size=5x>**cum：当前函数加上它之上的调用运行总耗时**</font>
+- <font color=green size=5x>**cum%：同上的 CPU 运行耗时总比例**</font>
+- <font color=red size=5x>**最后一列为函数名称，在大多数的情况下，我们可以通过这五列得出一个应用程序的运行情况，加以优化**</font>
+- ![image-20201223161256410](xnfx/image-20201223161256410.png)
+
+### web查看
+
+```
+go tool pprof -http=127.0.0.1:12345  -inuse_space   http://1x.1xx.1x3.xx:4803/debug/pprof/heap
+```
+
+![image-20201223160337005](xnfx/image-20201223160337005.png)
+
+
+
+## 2、当前分配对象数量 inuse_objects
+
+### 终端查看
+
+```
+go tool pprof   -inuse_objects   http://1x.1xx.1xx.x0:487/sxx/debug/pprof/heap
+```
+
+
+
+![image-20201223162607497](xnfx/image-20201223162607497.png)
+
+
+
+### web查看
+
+```
+go tool pprof   -http=127.0.0.1:12345 -inuse_objects   http://1x.1xx.1xx.x0:487/sxx/debug/pprof/heap
+```
+
+
+
+![image-20201223163920950](xnfx/image-20201223163920950.png)
+
+## 3、程序启动到现在的内存使用 alloc_space
+
+### 终端查看
+
+![image-20201223164635194](xnfx/image-20201223164635194.png)
+
+- <font color=green size=5x>**flat：给定函数上运行耗时**</font>
+- <font color=red size=5x>**flat%：同上的 CPU 运行耗时总比例**</font>
+- <font color=green size=5x>**sum%：给定函数累积使用 CPU 总比例**</font>
+- <font color=red size=5x>**cum：当前函数加上它之上的调用运行总耗时**</font>
+- <font color=green size=5x>**cum%：同上的 CPU 运行耗时总比例**</font>
+- <font color=red size=5x>**最后一列为函数名称，在大多数的情况下，我们可以通过这五列得出一个应用程序的运行情况，加以优化**</font>
+
+### web 查看
+
+![image-20201223165031315](xnfx/image-20201223165031315.png)
+
+## 4、从启动到现在的总分配对象 alloc_objects
+
+![image-20201223165757139](xnfx/image-20201223165757139.png)
+
+- <font color=green size=5x>**flat：给定函数上运行耗时**</font>
+- <font color=red size=5x>**flat%：同上的 CPU 运行耗时总比例**</font>
+- <font color=green size=5x>**sum%：给定函数累积使用 CPU 总比例**</font>
+- <font color=red size=5x>**cum：当前函数加上它之上的调用运行总耗时**</font>
+- <font color=green size=5x>**cum%：同上的 CPU 运行耗时总比例**</font>
+- <font color=red size=5x>**最后一列为函数名称，在大多数的情况下，我们可以通过这五列得出一个应用程序的运行情况，加以优化**</font>
+
+
+
 # 1、PProf
 
 - runtime/pprof：采集程序（非 Server）的运行数据进行分析
@@ -268,6 +362,16 @@ go tool pprof http://localhost:6060/debug/pprof/profile\?seconds\=60
 | cum      | 当前函数加上该函数调用之前的累计CPU耗时         | chanrecv：8.88+0.54=9.42                                     |
 | cum%     | 当前函数加上该函数调用之前的累计CPU耗时的百分比 | 9.42/29.14=32.33%                                            |
 | 最后一列 | 当前函数名称                                    | -                                                            |
+
+### ==<font color=red size=5x>查看内存分配取样</font>==
+
+默认情况下取样时只取当前内存使用情况，可以加可选命令alloc_objects，将从程序开始时的内存取样
+
+```
+go tool pprof -alloc_objects -http=127.0.0.1:12345  http://xxx:9999/debug/pprof/heap
+```
+
+
 
 ### ==查看某个函数的细节==
 
