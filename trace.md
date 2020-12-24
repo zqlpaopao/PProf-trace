@@ -116,9 +116,20 @@ go tool trace trace.dat
 | GC Sweeping           | GC 清扫      | 0ns  |
 | GC Pause              | GC 暂停      | 0ns  |
 
+
+
 ##  三、View trace
 
 ![image-20201223212443192](trace.assets/image-20201223212443192.png)
+
+1. 时间线：显示执行的时间单元，根据时间维度的不同可以调整区间，具体可执行 shift + ? 查看帮助手册。
+2. 堆：显示执行期间的内存分配和释放情况。
+3. 协程：显示在执行期间的每个 Goroutine 运行阶段有多少个协程在运行，其包含 GC 等待（GCWaiting）、可运行（Runnable）、运行中（Running）这三种状态。
+4. OS 线程：显示在执行期间有多少个线程在运行，其包含正在调用 Syscall（InSyscall）、运行中（Running）这两种状态。
+5. 虚拟处理器：每个虚拟处理器显示一行，虚拟处理器的数量一般默认为系统内核数。
+6. 协程和事件：显示在每个虚拟处理器上有什么 Goroutine 正在运行，而连线行为代表事件关联。
+
+
 
 
 
@@ -147,17 +158,73 @@ go tool trace trace.dat
 
 ![img](trace.assets/640.jpeg)
 
+在这里我们结合开头的代码去看的话，很明显就是 ch 的输入输出的过程了。
 
+# ==4、结合实战==
 
-## 协程信息
+线上 
 
 ```
-http://127.0.0.1:57886/usertask?type=sumTask&complete=true&latmin=2.511886431s&latmax=3.981071705s
+curl  http://10.xx1.xx3.80:4xx87/sxx/debug/pprof/trace\?seconeds\=10 > ./trace.data
+```
+
+得到
+
+![image-20201224171500075](trace/image-20201224171500075.png)
+
+```
+go tool trace trace.data
 ```
 
 
 
-![image-20201223184709784](trace/image-20201223184709784.png)
+View trace
+
+对着合适的区域执行快捷键 `W` 不断地放大时间线，如下：
+
+![image-20201224171605887](trace/image-20201224171605887.png)
+
+我们可以通过点击 View Options-Flow events、Following events 等方式，查看我们应用运行中的事件流情况。如下：
+
+发现大部分都是和G7048 net/http.(*conn).serve 有关
+
+![image-20201224172439396](trace/image-20201224172439396.png)
+
+说明执行时间超过了sysmon的检测时间，协程在不停的进行切换和解除绑定和重新唤醒
+
+![image-20201224172618317](trace/image-20201224172618317.png)
+
+
+
+## Network blocking profile 和 Syscall blocking profile
+
+![image-20201224172941510](trace/image-20201224172941510.png)
+
+
+
+# 5、使用场景
+
+## 诊断延迟问题
+
+当完成关键任务的goroutine被阻止运行时，可能会引起延迟问题。 可能的原因有很多：做系统调用时被阻塞; 被共享内存阻塞（通道/互斥等）; 被runtime系统（例如GC）阻塞，甚至可能调度程序不像您想要的那样频繁地运行关键goroutine。
+
+所有这些都可以使用go tool trace来识别。 您可以通过查看PROCs时间线来跟踪问题，并发现一段时间内goroutine被长时间阻塞。 一旦你确定了这段时间，应该给出一个关于根本原因的线索。
+
+作为延迟问题的一个例子，让我们看看长时间的GC暂停：![image-20201224173403412](trace/image-20201224173403412.png)
+
+红色的事件代表了唯一的程序goroutine正在运行。 在所有四个线程上并行运行的goroutines是垃圾收集器的MARK阶段。 这个MARK阶段阻止了主要的goroutine。 你能出到阻止runtime.main goroutine的时间长短吗？
+
+**在Go团队宣布GC暂停时间少于100微秒后**,我很快就调查了这个延迟问题。 我看到的漫长的停顿时间，`go tool trace`的结果看起来很奇怪，特别是可以看到它们(暂停)是在收集器的并发阶段发生的。 我在go-nuts 邮件列表中提到了这个问题，似乎与这个问题有关，现在已经在Go 1.8中修复了。 我的基准测试又出现了另一个GC暂停问题，这在写本文时依然会出现。 如果没有go tool trace这一工具，我是无法完成调查工作的。
+
+## 诊断并行问题
+
+
+
+通过本文我们习得了 go tool trace 的武林秘籍，它能够跟踪捕获各种执行中的事件，例如 Goroutine 的创建/阻塞/解除阻塞，Syscall 的进入/退出/阻止，GC 事件，Heap 的大小改变，Processor 启动/停止等等
+
+
+
+
 
 
 
