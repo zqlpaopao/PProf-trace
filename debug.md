@@ -18,7 +18,7 @@ FreeOSMemory强制进行一次垃圾收集，以释放尽量多的内存回操�
 
 <font color=red size=5x>**demo**</font>
 
-```
+```go
 package main
 
 import (
@@ -75,7 +75,7 @@ SetGCPercent设定垃圾收集的目标百分比：当新申请的内存大小�
 
 <font color=red size=5x>**demo**</font>
 
-```
+```go
 package main
 
 import (
